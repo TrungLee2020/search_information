@@ -2,17 +2,18 @@ import fitz
 from pathlib import Path
 from typing import List, Dict
 import re
-from extractors.base_extractor import BasePatternExtractor
-from core.trie import normalize_text
+from utils.utils import normalize_text, DataExporter
+from extractors.vietnamese_extractor import VietnamesePatternExtractor
 
 class PDFProcessor:
     """Xử lý PDF files - logic từ code gốc"""
     
-    def __init__(self, extractor):
-        self.extractor = extractor
+    def __init__(self, extractor=None, exporter=None):
+        self.extractor = extractor if extractor is not None else VietnamesePatternExtractor()
+        self.exporter = exporter if exporter is not None else DataExporter()
     
     def process_file(self, filename: Path) -> List[Dict]:
-        """Logic từ extract_pdf_data_optimized của code gốc"""
+        """Logic extract pdf optimized"""
         records = []
         try:
             full_text = ""
@@ -31,14 +32,14 @@ class PDFProcessor:
             
             filename_str = str(filename)
             
-            # Trích xuất thông tin cơ bản - logic từ code gốc
+            # Trích xuất thông tin cơ bản
             name_match = re.search(r'Họ\s*tên\s*:\s*([A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][^:\n]+)', full_text)
             dob_match = re.search(r'Ngày\s*sinh\s*:\s*(\d{1,2}/\d{1,2}/\d{4})', full_text)
             
             person_name = normalize_text(name_match.group(1)) if name_match else ""
             person_dob = dob_match.group(1) if dob_match else ""
             
-            # Trích xuất từng entry xuất nhập cảnh - pattern từ code gốc
+            # Trích xuất từng entry xuất nhập cảnh
             entry_pattern = r'(\d+)\.\s*(Xuất\s*cảnh|Nhập\s*cảnh)\s*(?:.*?)Số\s*hộ\s*chiếu\s*:\s*([A-Z]?\d+[A-Z]?\d*)\s*(?:.*?)Ngày\s*(?:xuất|nhập)\s*:\s*(\d{1,2}/\d{1,2}/\d{4}\s+\d{1,2}:\d{1,2}:\d{1,2})(?:.*?)Cửa\s*(?:Xuất|Nhập)\s*cảnh\s*:\s*([^:\n]+)(?:.*?)Mục\s*đích\s*:\s*([^:\n]+)'
             
             entries = re.findall(entry_pattern, full_text, re.DOTALL | re.IGNORECASE)
@@ -63,6 +64,7 @@ class PDFProcessor:
             extracted_records = self.extractor.extract_info_from_text(full_text, filename_str)
             records.extend(extracted_records)
             
+            print(f"Đã trích xuất {len(records)} bản ghi từ {filename}")
             return records
             
         except Exception as e:

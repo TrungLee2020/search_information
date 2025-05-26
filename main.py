@@ -1,4 +1,5 @@
 import argparse
+import datetime
 from pathlib import Path
 from collections import defaultdict
 from extractors.vietnamese_extractor import VietnamesePatternExtractor
@@ -7,7 +8,6 @@ from processor.word_processor import WordProcessor
 from processor.pdf_processor import PDFProcessor
 from search.search_engine import SearchEngine
 import re
-from core.trie import normalize_text
 from typing import List, Dict, Any
 
 
@@ -23,7 +23,7 @@ class DocumentSearchSystem:
         self.data = []
     
     def load_data(self, data_dir: Path):
-        """Load dữ liệu từ thư mục - logic từ load_all_data_optimized"""
+        """Load dữ liệu từ thư mục"""
         self.data = []
         
         if not data_dir.exists():
@@ -32,6 +32,15 @@ class DocumentSearchSystem:
         
         print(f"📁 Đang quét thư mục: {data_dir}")
         
+        all_files = list(data_dir.iterdir())
+        if not all_files:
+            print("❌ Thư mục 'data' trống.")
+            return []
+        
+        print("📋 Files được tìm thấy:")
+        for file in all_files:
+            print(f"  - {file.name}")        
+
         # Excel files
         for file in data_dir.iterdir():
             if file.suffix.lower() in ['.xlsx', '.xls']:
@@ -66,23 +75,28 @@ class DocumentSearchSystem:
         return self.search_engine.search(query, field, threshold)
     
     def smart_search(self, query, threshold=70):
-        """Smart search với auto-detection - logic từ code gốc"""
+        """Smart search với auto-detection"""
         query = query.strip()
-        
-        # Detect query type - logic từ smart_search_enhanced
-        if re.match(r'^\d{9}$|^\d{12}$', query):  # CMND 9 số hoặc CCCD 12 số
+        if not query:
+            return []
+
+        if re.match(r'^\d{9}$|^\d{12}$', query):
             return self.search(query, 'id_number', threshold)
-        elif re.match(r'^[A-Z]?\d{7,9}$', query):  # Số hộ chiếu, có thể có 1 chữ cái đầu
+        elif re.match(r'^[A-Z]?\d{7,9}$', query):
             return self.search(query, 'passport', threshold)
-        elif re.match(r'^\d{1,2}/\d{1,2}/\d{4}$', query):  # Ngày tháng năm sinh dạng dd/mm/yyyy
-            return self.search(query, 'dob', threshold)
-        elif len(query.split()) >= 2 and not re.search(r'\d', query):  # Họ tên không có số
+        elif re.match(r'^\d{1,2}/\d{1,2}/\d{4}$', query):
+            try:
+                datetime.strptime(query, "%d/%m/%Y")
+                return self.search(query, 'dob', threshold)
+            except ValueError:
+                return []
+        elif len(query.split()) >= 2 and not re.search(r'\d', query):
             return self.search(query, 'name', threshold)
         else:
             return self.search(query, None, threshold)
     
     def get_statistics(self):
-        """Thống kê dữ liệu - logic từ show_data_statistics"""
+        """Thống kê dữ liệu"""
         stats = {
             'total_records': len(self.data),
             'sources': defaultdict(int),
@@ -104,12 +118,12 @@ class DocumentSearchSystem:
         return dict(stats)
 
 def display_results(results, max_results=50):
-    """Hiển thị kết quả - logic từ display_results_advanced của code gốc"""
+    """Hiển thị kết quả"""
     if not results:
         print("Không tìm thấy kết quả.")
         return
     
-    # Group results by type - logic từ code gốc
+    # Group results by type
     grouped = defaultdict(list)
     for result in results:
         record_type = result['record'].get('type', 'unknown')
@@ -123,50 +137,69 @@ def display_results(results, max_results=50):
         if displayed_count >= max_results:
             break
             
-        print(f"\n📂 {record_type.upper().replace('_', ' ')} ({len(type_results)} kết quả)")
+        # icon = type_icons.get(record_type, '📄')
+        print(f"\n{record_type.upper().replace('_', ' ')} ({len(type_results)} kết quả)")
         print("-" * 40)
         
         for i, result in enumerate(type_results[:min(5, max_results - displayed_count)], 1):
             record = result['record']
             
             print(f"\n{displayed_count + 1}. Điểm: {result['score']:.1f} | Field: {result['matched_field']}")
-            print(f"   📁 Nguồn: {record['source']}")
+            print(f"   Nguồn: {record['source']}")
             
             if record.get('name'):
-                print(f"   👤 Tên: {record['name']}")
+                print(f"   Tên: {record['name']}")
             
             if record.get('dob'):
-                print(f"   📅 Sinh: {record['dob']}")
+                print(f"   Sinh: {record['dob']}")
                 
             if record.get('passport'):
-                print(f"   🛂 Hộ chiếu: {record['passport']}")
+                print(f"   Hộ chiếu: {record['passport']}")
                 
             if record.get('id_number'):
-                print(f"   🆔 CCCD: {record['id_number']}")
+                print(f"   CCCD: {record['id_number']}")
                 
             if record.get('travel_date'):
-                print(f"   ✈️ Ngày: {record['travel_date']}")
+                print(f"   Ngày: {record['travel_date']}")
                 
             if record.get('entry_type'):
-                print(f"   📍 Loại: {record['entry_type']}")
+                print(f"   Loại: {record['entry_type']}")
                 
             if record.get('gate'):
-                print(f"   🚪 Cửa khẩu: {record['gate']}")
+                print(f" Cửa khẩu: {record['gate']}")
                 
             if record.get('purpose'):
-                print(f"   🎯 Mục đích: {record['purpose']}")
+                print(f" Mục đích: {record['purpose']}")
                 
             if record.get('position'):
-                print(f"   💼 Chức vụ: {record['position']}")
+                print(f" Chức vụ: {record['position']}")
                 
             if record.get('file_reference'):
-                print(f"   📋 Hồ sơ: {record['file_reference']}")
+                print(f" Hồ sơ: {record['file_reference']}")
+            
+            # Thông tin đặc biệt cho Excel records
+            if record.get('relationship'):
+                print(f" Quan hệ: {record['relationship']}")
+            
+            if record.get('related_to'):
+                print(f" Liên quan đến: {record['related_to']}")
+            
+            if record.get('related_to_position'):
+                print(f"Chức vụ người liên quan: {record['related_to_position']}")
             
             if record.get('relatives_info'):
-                print(f"   👨‍👩‍👧‍👦 Thân nhân: {record['relatives_info'][:100]}...")
+                print(f"Thông tin thân nhân: {record['relatives_info'][:100]}...")
+            
+            if record.get('relative_names'):
+                print(f"Tên thân nhân: {', '.join(record['relative_names'])}")
+            
+            if record.get('family_relationships'):
+                print(f"Chi tiết quan hệ gia đình:")
+                for rel in record['family_relationships'][:3]:  # Hiển thị tối đa 3 quan hệ
+                    print(f"      • {rel['relationship']}: {rel['name']}")
             
             if record.get('row_number'):
-                print(f"   📝 Hàng số: {record['row_number']}")
+                print(f"Hàng số: {record['row_number']}")
             
             displayed_count += 1
             if displayed_count >= max_results:
@@ -177,6 +210,7 @@ def display_results(results, max_results=50):
     
     if len(results) > max_results:
         print(f"\n... và {len(results) - max_results} kết quả khác")
+
 
 def show_statistics(stats):
     """Hiển thị thống kê"""
@@ -202,10 +236,10 @@ def create_cli():
         description="🔍 Document Search System v2.0",
         epilog="""
 Ví dụ sử dụng:
-    python search.py --query "Nguyễn Văn A"
-    python search.py --query "123456789" --smart
-    python search.py --query "Phạm Thị" --field name
-    python search.py --stats
+    python main.py --query "Nguyễn Văn A"
+    python main.py --query "123456789" --smart
+    python main.py --query "Phạm Thị" --field name
+    python main.py --stats
         """
     )
     
@@ -215,6 +249,7 @@ Ví dụ sử dụng:
     parser.add_argument('--max-results', type=int, default=50, help='Số kết quả tối đa')
     parser.add_argument('--stats', action='store_true', help='Hiển thị thống kê dữ liệu')
     parser.add_argument('--smart', action='store_true', help='Tìm kiếm thông minh')
+    parser.add_argument('--date-range', help='Tìm theo khoảng ngày: start_date,end_date')
     parser.add_argument('--data-dir', type=Path, default=Path('data'), help='Thư mục dữ liệu')
     
     return parser
@@ -241,7 +276,17 @@ def main():
         show_statistics(stats)
         if not args.query:
             return
-    
+
+    # if args.date_range:
+    #     # Date range search
+    #     dates = args.date_range.split(',')
+    #     if len(dates) == 2:
+    #         start_date, end_date = dates
+    #         print(f"Tìm kiếm theo khoảng thời gian: {start_date} → {end_date}")
+    #         results = search_system.search_by_date_range(args.query, start_date.strip(), end_date.strip())
+    #     else:
+    #         print("Format ngày không đúng. Sử dụng: start_date,end_date")
+    #         return    
     # Thực hiện tìm kiếm
     if args.query:
         print(f"\n🔍 Tìm kiếm: '{args.query}'")
@@ -259,9 +304,9 @@ def main():
     
     else:
         print("\n💡 Sử dụng:")
-        print("  python search.py --query 'Nguyễn Văn A'")
-        print("  python search.py --query '123456789' --smart")
-        print("  python search.py --stats")
+        print("  python main.py --query 'Nguyễn Văn A'")
+        print("  python main.py --query '123456789' --smart")
+        print("  python main.py --stats")
 
 if __name__ == '__main__':
     main()

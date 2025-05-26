@@ -1,4 +1,14 @@
 from typing import Dict, List
+import re
+import unicodedata
+
+def normalize_text(text):
+    """Chuẩn hóa văn bản tiếng Việt"""
+    if not isinstance(text, str):
+        return ""
+    text = unicodedata.normalize('NFKC', text)
+    return ' '.join(text.lower().split())
+
 
 class DataExporter:
     """Export data ra các format khác nhau"""

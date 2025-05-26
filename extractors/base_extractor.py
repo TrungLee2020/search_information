@@ -20,12 +20,13 @@ class BasePatternExtractor(ABC):
         pass
     
     def _clean_value(self, value, field_type):
-        """Làm sạch giá trị - logic từ code gốc"""
+        """Làm sạch giá trị"""
         value = value.strip()
         
         if field_type in ['passports', 'ids']:
             return ''.join(c for c in value if c.isalnum())
         elif field_type == 'names':
+            # Loại bỏ ký tự đặc biệt, chỉ giữ chữ cái và khoảng trắng
             clean_name = re.sub(r'[^\w\s]', '', value)
             return ' '.join(word.capitalize() for word in clean_name.split())
         else:

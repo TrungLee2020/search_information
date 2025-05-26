@@ -1,7 +1,4 @@
-import unicodedata
-from collections import defaultdict
-from typing import Dict, List, Any, Optional
-
+# -*- coding: utf-8 -*-
 class TrieNode:
     def __init__(self):
         self.children = {}
@@ -36,10 +33,3 @@ class Trie:
         for child in node.children.values():
             records.extend(self._collect_records(child))
         return records
-
-def normalize_text(text):
-    """Chuẩn hóa văn bản tiếng Việt - giữ nguyên logic gốc"""
-    if not isinstance(text, str):
-        return ""
-    text = unicodedata.normalize('NFKC', text)
-    return ' '.join(text.lower().split())

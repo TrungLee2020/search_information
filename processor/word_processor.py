@@ -2,26 +2,28 @@ from docx import Document
 from pathlib import Path
 from typing import List, Dict
 import re
+from utils.utils import normalize_text, DataExporter
+from extractors.vietnamese_extractor import VietnamesePatternExtractor
 
-from core.trie import normalize_text
 
 class WordProcessor:
-    """Xử lý Word files - logic từ code gốc"""
+    """Xử lý Word files"""
+    def __init__(self, extractor=None, exporter=None):
+        self.extractor = extractor if extractor is not None else VietnamesePatternExtractor()
+        self.exporter = exporter if exporter is not None else DataExporter()
     
-    def __init__(self, extractor):
-        self.extractor = extractor
-    
+    # Trích xuất Word với focus vào security records
     def process_file(self, filename: Path) -> List[Dict]:
-        """Logic từ extract_word_data_optimized của code gốc"""
         try:
             doc = Document(filename)
             records = []
             full_text = ""
             
+            # Đọc toàn bộ văn bản
             for para in doc.paragraphs:
                 full_text += para.text + "\n"
             
-            # Pattern đặc biệt cho security records - từ code gốc
+            # Pattern đặc biệt cho security records
             security_pattern = r'(\d+)\.\s*Nhân\s*sự\s+([A-ZÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴÈÉẸẺẼÊỀẾỆỂỄÌÍỊỈĨÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠÙÚỤỦŨƯỪỨỰỬỮỲÝỴỶỸĐ][^(]+)\s*\(([^)]+)\)\s*có\s+([^–]+)–\s*có\s*tài\s*liệu\s*tại\s*hồ\s*sơ\s*([^,\n]+)'
             
             security_matches = re.findall(security_pattern, full_text, re.IGNORECASE | re.MULTILINE)
@@ -43,6 +45,7 @@ class WordProcessor:
             extracted_records = self.extractor.extract_info_from_text(full_text, str(filename))
             records.extend(extracted_records)
             
+            print(f"Đã trích xuất {len(records)} từ bản ghi {filename}")
             return records
             
         except Exception as e:
