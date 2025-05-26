@@ -1,0 +1,8 @@
+pandas
+PyMuPDF
+python-docx
+openpyxl
+numpy
+RapidFuzz
+Levenshtein
+jellyfish
